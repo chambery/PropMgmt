@@ -54,9 +54,11 @@ void displayPropertyData(Map property_data)
   final oCcy = new NumberFormat('#,##0.00', 'en_US');
 
   TableElement transactions_table = new TableElement();
+  transactions_table.classes.add('pure-table-striped');
 //  transactions_table.style = 'border: 1px';
 
-  TableRowElement table_header = new TableRowElement();
+  var tHead = transactions_table.createTHead();
+  TableRowElement table_header = tHead.addRow();
   /* empty corner cell */
   table_header.addCell().text = ' ';
 
@@ -72,17 +74,17 @@ void displayPropertyData(Map property_data)
     col_count++;
   }
 
-  transactions_table.append(table_header);
 
-  var incomes = new Set();
-  var expenses = new Set();
-
+  var incomes = transactions_table.createTBody();
+  var separator = transactions_table.createTBody().addRow().addCell();
+  separator.attributes['colspan'] = '${col_count+1}';
+  var expenses = transactions_table.createTBody();
   property_data['by_item_name'].forEach((item_name, months)
   {
     /*
      "rent": {
             "2014-08": {
-                "prop_name": "9333 Meadowmont View Dr",
+                "prop_name": "1313 Mockingbird Ln",
                 "item_name": "rent",
      */
     TableRowElement item_row = new TableRowElement();
@@ -99,15 +101,15 @@ void displayPropertyData(Map property_data)
         var amount = property_data['by_item_name'][item_name][yyyy_MM.format(counter)]['amount'];
         print('\t${yyyy_MM.format(counter)}: $amount');
         data = oCcy.format(amount * .01);
-        if(amount > 0 && !incomes.contains(item_row))
+        if(amount > 0)
         {
           print('income: $item_name');
-          incomes.add(item_row);
+          incomes.append(item_row);
         }
-        else if(!expenses.contains(item_row))
+        else
         {
           print('expense: $item_name');
-          expenses.add(item_row);
+          expenses.append(item_row);
         }
       }
       print('cell: $data');
@@ -117,24 +119,6 @@ void displayPropertyData(Map property_data)
       print('$counter: ${yyyy_MM.format(counter)} < $to_date ?');
     }
   });
-
-  incomes.forEach((row)
-  {
-    transactions_table.append(row);
-  });
-
-//  var blank_row = ;
-  /* add 1 for the blank corner block */
-//  blank_row.setAttribute('colspan', '${col_count+1}');
-//  blank_row.style.height = '20px';
-
-  transactions_table.appendHtml("<tr><td colspan=${col_count+1}>--</td></tr>  ");
-
-  expenses.forEach((row)
-  {
-    transactions_table.append(row);
-  });
-
 
   querySelector('#transactions').append(transactions_table);
 }

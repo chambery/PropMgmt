@@ -2,7 +2,6 @@
  * Created by chambery on 8/25/14.
  */
 var sqlite3 = require("sqlite3").verbose();
-var sync = require('synchronize');
 var express = require('express'),
     app = express();
 var dateFormat = require('dateformat');
@@ -14,10 +13,6 @@ var db = new sqlite3.Database(file);
 console.log("db: " + db.toString());
 YAML = require('yamljs');
 
-app.use(function (req, res, next)
-{
-    sync.fiber(next)
-});
 
 function make_dir(path)
 {
