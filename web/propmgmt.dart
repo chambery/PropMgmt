@@ -1,5 +1,6 @@
 import 'dart:html';
 import 'dart:convert';
+import 'dart:js';
 import 'package:intl/intl.dart';
 
 void main()
@@ -45,6 +46,14 @@ void displayPropertyData(Map property_data)
     querySelector('#tenants').append(tenant_div);
 
   });
+
+
+  /* handsontable */
+  var colHeaders = [];
+  var rows_i = [];
+  var rows_e = [];
+
+
   DateFormat yyyy_MM_dd = new DateFormat('yyyy-MM-dd');
   DateFormat yyyy_MM = new DateFormat('yyyy-MM');
   DateFormat MMM = new DateFormat('MMM');
@@ -72,6 +81,7 @@ void displayPropertyData(Map property_data)
     counter = new DateTime(counter.year, counter.month + 1, counter.day);
     print('$counter: ${yyyy_MM.format(counter)} < $to_date ?');
     col_count++;
+    colHeaders.add(MMM.format(counter));
   }
 
 
@@ -89,6 +99,8 @@ void displayPropertyData(Map property_data)
      */
     TableRowElement item_row = new TableRowElement();
     item_row.addCell().text = item_name;
+    /* handsontable */
+    var row = [];
 
     DateTime counter = from_date;
     print('$item_name');
@@ -98,6 +110,7 @@ void displayPropertyData(Map property_data)
       var data = ' ';
       if (property_data['by_item_name'][item_name][yyyy_MM.format(counter)] != null)
       {
+        /* handsontable */
         var amount = property_data['by_item_name'][item_name][yyyy_MM.format(counter)]['amount'];
         print('\t${yyyy_MM.format(counter)}: $amount');
         data = oCcy.format(amount * .01);
@@ -105,20 +118,42 @@ void displayPropertyData(Map property_data)
         {
           print('income: $item_name');
           incomes.append(item_row);
+          /* handsontable */
+          rows_i.add(row);
         }
         else
         {
           print('expense: $item_name');
           expenses.append(item_row);
+          /* handsontable */
+          rows_e.add(row);
         }
       }
       print('cell: $data');
       item_row.addCell().text = data;
+      /* handsontable */
+      row.add(data);
+
       /* increment the month */
       counter = new DateTime(counter.year, counter.month + 1, counter.day);
       print('$counter: ${yyyy_MM.format(counter)} < $to_date ?');
     }
   });
 
+  print('$rows_i\n$rows_e');
   querySelector('#transactions').append(transactions_table);
+
+  var rows = [];
+  rows.addAll(rows_i);
+  rows.addAll(rows_e);
+
+  var handsontable = new JsObject(context['handsontable'],
+    [
+    querySelector('#handsontable'),
+    {
+      'colHeaders': colHeaders,
+      'data': rows
+    }
+    ]);
+
 }
