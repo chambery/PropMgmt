@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:js';
 import 'package:intl/intl.dart';
 
+
+var rows_i = [];
+
 void main()
 {
   var request = HttpRequest.getString('/property/1313%20Mockingbird%20Ln/2014-06-01').then(onDataLoaded);
@@ -49,8 +52,8 @@ void displayPropertyData(Map property_data)
 
 
   /* handsontable */
-  var colHeaders = [];
-  var rows_i = [];
+  var colHeaders = [''];
+  var separator = [''];
   var rows_e = [];
 
 
@@ -62,33 +65,16 @@ void displayPropertyData(Map property_data)
   Duration duration = to_date.difference(from_date);
   final oCcy = new NumberFormat('#,##0.00', 'en_US');
 
-  TableElement transactions_table = new TableElement();
-  transactions_table.classes.add('pure-table-striped');
-//  transactions_table.style = 'border: 1px';
-
-  var tHead = transactions_table.createTHead();
-  TableRowElement table_header = tHead.addRow();
-  /* empty corner cell */
-  table_header.addCell().text = ' ';
-
   DateTime counter = from_date;
   print('$to_date');
-  int col_count = 0;
   while (counter.isBefore(to_date))
   {
-    table_header.addCell().text = MMM.format(counter);
+    colHeaders.add(MMM.format(counter));
+    separator.add('');
     /* increment the month */
     counter = new DateTime(counter.year, counter.month + 1, counter.day);
-    print('$counter: ${yyyy_MM.format(counter)} < $to_date ?');
-    col_count++;
-    colHeaders.add(MMM.format(counter));
   }
 
-
-  var incomes = transactions_table.createTBody();
-  var separator = transactions_table.createTBody().addRow().addCell();
-  separator.attributes['colspan'] = '${col_count+1}';
-  var expenses = transactions_table.createTBody();
   property_data['by_item_name'].forEach((item_name, months)
   {
     /*
@@ -97,10 +83,8 @@ void displayPropertyData(Map property_data)
                 "prop_name": "1313 Mockingbird Ln",
                 "item_name": "rent",
      */
-    TableRowElement item_row = new TableRowElement();
-    item_row.addCell().text = item_name;
     /* handsontable */
-    var row = [];
+    var row = [item_name];
 
     DateTime counter = from_date;
     print('$item_name');
@@ -114,23 +98,18 @@ void displayPropertyData(Map property_data)
         var amount = property_data['by_item_name'][item_name][yyyy_MM.format(counter)]['amount'];
         print('\t${yyyy_MM.format(counter)}: $amount');
         data = oCcy.format(amount * .01);
-        if(amount > 0)
+        if(amount >= 0 && !rows_i.contains(row))
         {
-          print('income: $item_name');
-          incomes.append(item_row);
           /* handsontable */
           rows_i.add(row);
         }
-        else
+        else if(amount < 0 && !rows_e.contains(row))
         {
-          print('expense: $item_name');
-          expenses.append(item_row);
           /* handsontable */
           rows_e.add(row);
         }
       }
       print('cell: $data');
-      item_row.addCell().text = data;
       /* handsontable */
       row.add(data);
 
@@ -141,19 +120,40 @@ void displayPropertyData(Map property_data)
   });
 
   print('$rows_i\n$rows_e');
-  querySelector('#transactions').append(transactions_table);
 
   var rows = [];
   rows.addAll(rows_i);
+  rows.add(separator);
   rows.addAll(rows_e);
 
-  var handsontable = new JsObject(context['handsontable'],
-    [
-    querySelector('#handsontable'),
-    {
+//  var getCellProps = new JsFunction.withThis(getCellProperties);
+  var hot_data = new JsObject.jsify({
       'colHeaders': colHeaders,
-      'data': rows
-    }
-    ]);
+      'data': rows,
+      'mergeCells':
+      [
+          {'row': rows_i.length, 'col': 0, 'rowspan': 1, 'colspan': separator.length }
+      ]
+//      'cells': callMethod
+  });
+  print('jQuery (as \$): ${context[r'$']}');
+  print('jQuery: ${context['jQuery']}');
 
+  context
+    .callMethod('jQuery', ['#handsontable'])
+    .callMethod('handsontable', [hot_data]);
+//  var hot = new js.JsObject(js.context['Handsontable'], [hot_data]);
+//  print('$hot');
+}
+
+
+Map getCellProperties(int row, int col, Map prop) {
+  var cellProperties = {};
+  if (row == rows_i.length)
+  {
+    cellProperties['readOnly'] = true;
+    //make cell read-only if it is first row or the text reads 'readOnly'
+  }
+
+  return cellProperties;
 }

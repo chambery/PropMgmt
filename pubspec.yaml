@@ -1,15 +1,6 @@
 name: PropMgmt
 dependencies:
-  angular: any
-  angular_ui: any
-  http_server: any
   logging: any
-  polymer: any
-  start:
-    git: https://github.com/lvivski/start.git
-  dart-sqlite:
-    git: https://github.com/sam-mccall/dart-sqlite.git
+  intl: any
   yaml: any
-transformers:
-- polymer:
-    entry_points: web/propmgmt.html
+  browser: any
