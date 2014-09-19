@@ -4,6 +4,9 @@
 var sqlite3 = require("sqlite3").verbose();
 var express = require('express'),
     app = express();
+var bodyParser = require("body-parser");
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: false}));
 var dateFormat = require('dateformat');
 var fs = require('fs');
 var file = "../propmgmt.sqlite";
@@ -45,6 +48,50 @@ app.get('/property/:prop_name/:from_date/:to_date', function(req, res)
     });
 });
 
+/**
+ *
+ */
+app.post('/history/:prop_name/:date/:category', function(req, res)
+{
+    var prop_name = req.params.prop_name;
+    var date = req.params.date;
+    var cat = req.params.category;
+
+    console.log("property: " + prop_name + ": " + date + ", " + cat);
+    console.log("data: " + req.body.data);
+
+    db.serialize(function()
+    {
+        count = 0;
+        console.log("SELECT count(*) FROM history WHERE item_name = '" + cat + "' and strftime('%Y-%m', date) = '" + date + "' and prop_name = '" + prop_name + "')");
+        db.get("SELECT count(*) FROM history WHERE item_name = '" + cat + "' and strftime('%Y-%m', date) = '" + date + "' and prop_name = '" + prop_name + "'", function (err, row)
+        {
+            if(err != null && err.length > 0)
+            {
+                console.log("error: " + err);
+            }
+            else if(row != undefined)
+            {
+                count = row.count;
+            }
+
+            if (count == 0)
+            {
+                console.log("INSERT INTO history VALUES('" + prop_name +"', '" + cat +"', '" + req.body.amount +"', '" + date +"', '" + req.body.vendor +"', '" + req.body.notes +"'");
+                db.run("INSERT INTO history VALUES('" + prop_name +"', '" + cat +"', '" + req.body.amount +"', '" + date +"', '" + req.body.vendor +"', '" + req.body.notes +"')");
+            }
+            else
+            {
+                console.log("UPDATE history SET prop_name = '" + prop_name +"', item_name = '" + cat +"', date = '" + date +"', amount = " + req.body.amount +"");
+                db.run("UPDATE history SET prop_name = '" + prop_name +"', item_name = '" + cat +"', date = '" + date +"', amount = " + req.body.amount +"");
+            }
+
+        });
+
+
+
+    });
+});
 
 app.use('/', express.static(__dirname));
 app.listen(1860);

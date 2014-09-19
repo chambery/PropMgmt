@@ -53,7 +53,6 @@ void displayPropertyData(Map property_data)
 
   /* handsontable */
   var colHeaders = [''];
-  var separator = [''];
   var rows_e = [];
 
 
@@ -70,7 +69,6 @@ void displayPropertyData(Map property_data)
   while (counter.isBefore(to_date))
   {
     colHeaders.add(MMM.format(counter));
-    separator.add('');
     /* increment the month */
     counter = new DateTime(counter.year, counter.month + 1, counter.day);
   }
@@ -83,39 +81,34 @@ void displayPropertyData(Map property_data)
                 "prop_name": "1313 Mockingbird Ln",
                 "item_name": "rent",
      */
-    /* handsontable */
-    var row = [item_name];
+    var row = [{'view': item_name}];
 
     DateTime counter = from_date;
     print('$item_name');
     while (yyyy_MM.format(counter).compareTo(yyyy_MM.format(to_date)) <= 0)
     {
 
-      var data = ' ';
+      var data ='  ';
       if (property_data['by_item_name'][item_name][yyyy_MM.format(counter)] != null)
       {
-        /* handsontable */
         var amount = property_data['by_item_name'][item_name][yyyy_MM.format(counter)]['amount'];
         print('\t${yyyy_MM.format(counter)}: $amount');
         data = oCcy.format(amount * .01);
         if(amount >= 0 && !rows_i.contains(row))
         {
-          /* handsontable */
           rows_i.add(row);
         }
         else if(amount < 0 && !rows_e.contains(row))
         {
-          /* handsontable */
           rows_e.add(row);
         }
       }
       print('cell: $data');
-      /* handsontable */
-      row.add(data);
+      var raw_date = property_data['by_item_name'][item_name][yyyy_MM.format(counter)];
+      row.add({'view': data, 'data': raw_date });
 
       /* increment the month */
       counter = new DateTime(counter.year, counter.month + 1, counter.day);
-      print('$counter: ${yyyy_MM.format(counter)} < $to_date ?');
     }
   });
 
@@ -123,21 +116,34 @@ void displayPropertyData(Map property_data)
 
   var rows = [];
   rows.addAll(rows_i);
-  rows.add(separator);
   rows.addAll(rows_e);
+
+  context['Handsontable']['TextCell']['renderer'] = renderCell;
 
 //  var getCellProps = new JsFunction.withThis(getCellProperties);
   var hot_data = new JsObject.jsify({
       'colHeaders': colHeaders,
       'data': rows,
-      'mergeCells':
-      [
-          {'row': rows_i.length, 'col': 0, 'rowspan': 1, 'colspan': separator.length }
-      ]
-//      'cells': callMethod
+//      'cells': (row, col, map) {
+//        print('row: $row, col: $col');
+//      },
+      'afterChange': (changes, source, a, b, c, d)
+      {
+        /* changes = [ [row, col, prev, new] ] */
+        print('$changes, $source, $a, $b, $c, $d');
+        if(changes != null)
+        {
+          var row = changes[0][0];
+          var col = changes[0][1];
+          var prev = changes[0][2];
+          var val = changes[0][3];
+          // TODO - fix up data with type assignment
+          /* item_name will always be in the zero column */
+          saveCell(property_data['prop_name'], colHeaders[col], rows[row][0], '{"amount": $val}');
+        }
+      }
   });
-  print('jQuery (as \$): ${context[r'$']}');
-  print('jQuery: ${context['jQuery']}');
+
 
   context
     .callMethod('jQuery', ['#handsontable'])
@@ -146,14 +152,36 @@ void displayPropertyData(Map property_data)
 //  print('$hot');
 }
 
+void saveCell(String prop_name, String date, String category, var data)
+{
+  print('$prop_name\n$date\n$category\n$data');
+    HttpRequest request = new HttpRequest(); // create a new XHR
 
-Map getCellProperties(int row, int col, Map prop) {
-  var cellProperties = {};
-  if (row == rows_i.length)
-  {
-    cellProperties['readOnly'] = true;
-    //make cell read-only if it is first row or the text reads 'readOnly'
+    // add an event handler that is called when the request finishes
+    request.onReadyStateChange.listen((_) {
+      if (request.readyState == HttpRequest.DONE &&
+      (request.status == 200 || request.status == 0)) {
+        // data saved OK.
+        print(request.responseText); // output the response from the server
+      }
+    });
+
+    // POST the data to the server
+    var url = "/history/$prop_name/$date/$category";
+    request.open("POST", url, async: false);
+
+    request.send(data); // perform the async POST
   }
 
-  return cellProperties;
+
+void renderCell(var instance, var td, int row, int col, var prop, var value, Map cellProperties)
+{
+  print('renderCell:  $instance, $td, $row, $col, $prop, $value, $cellProperties');
+  if(value is Map)
+  {
+    value.forEach((k,v) => print('$k = $v'));
+  }
+
+//  context['Handsontable']['TextRenderer'](instance, td, row, col, prop, value, cellProperties);
+
 }
