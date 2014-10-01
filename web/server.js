@@ -125,7 +125,7 @@ function txn_history_by_date(prop_name, from_date, to_date, fn)
                 {
                     by_month[month] = {"income": [], "expense": []};
                 }
-
+                rows[i].amount = rows[i].amount * .01;
                 if(rows[i].amount > 0)
                 {
                     by_month[month].income.push(rows[i]);

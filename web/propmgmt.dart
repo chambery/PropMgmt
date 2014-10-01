@@ -4,7 +4,7 @@ import 'dart:js';
 import 'package:intl/intl.dart';
 
 
-var rows_i = [];
+var rows_i = {};
 
 void main()
 {
@@ -14,7 +14,7 @@ void main()
 void onDataLoaded(String responseText)
 {
   var jsonString = responseText;
-  print(jsonString);
+  print("response data: $jsonString");
   /* expecting */
   Map property_data = JSON.decode(jsonString);
   displayPropertyData(property_data);
@@ -53,7 +53,8 @@ void displayPropertyData(Map property_data)
 
   /* handsontable */
   var colHeaders = [''];
-  var rows_e = [];
+  var columns = [{'data' : 'item_name'}];
+  var rows_e = {};
 
 
   DateFormat yyyy_MM_dd = new DateFormat('yyyy-MM-dd');
@@ -68,11 +69,21 @@ void displayPropertyData(Map property_data)
   print('$to_date');
   while (counter.isBefore(to_date))
   {
-    colHeaders.add(MMM.format(counter));
+    /*
+     [
+        {"data": "2014-06.view" },
+        {"data": "2014-07.view" },
+        ...
+     */
+    var col_date = MMM.format(counter);
+    colHeaders.add(col_date);
+    columns.add({'data' : '${yyyy_MM.format(counter)}.view', 'type': 'numeric', 'format': '0.00' });
     /* increment the month */
     counter = new DateTime(counter.year, counter.month + 1, counter.day);
   }
+  print('columns: $columns');
 
+  var rows = [];
   property_data['by_item_name'].forEach((item_name, months)
   {
     /*
@@ -81,52 +92,41 @@ void displayPropertyData(Map property_data)
                 "prop_name": "1313 Mockingbird Ln",
                 "item_name": "rent",
      */
-    var row = [{'view': item_name}];
+    var row = {'view': item_name};
 
     DateTime counter = from_date;
     print('$item_name');
-    while (yyyy_MM.format(counter).compareTo(yyyy_MM.format(to_date)) <= 0)
+    var row_data = {'item_name' : item_name};
+    // TODO - nest in columns
+    while (counter.isBefore(to_date))
     {
-
-      var data ='  ';
-      if (property_data['by_item_name'][item_name][yyyy_MM.format(counter)] != null)
+      var month = yyyy_MM.format(counter);
+      var item_month_data = property_data['by_item_name'][item_name][month];
+      if(item_month_data != null)
       {
-        var amount = property_data['by_item_name'][item_name][yyyy_MM.format(counter)]['amount'];
-        print('\t${yyyy_MM.format(counter)}: $amount');
-        data = oCcy.format(amount * .01);
-        if(amount >= 0 && !rows_i.contains(row))
-        {
-          rows_i.add(row);
-        }
-        else if(amount < 0 && !rows_e.contains(row))
-        {
-          rows_e.add(row);
-        }
+        var amount = item_month_data['amount'];
+        print('amount: $amount');
+        row_data[month] = { 'view': amount, 'model' : item_month_data };
       }
-      print('cell: $data');
-      var raw_date = property_data['by_item_name'][item_name][yyyy_MM.format(counter)];
-      row.add({'view': data, 'data': raw_date });
-
+      else
+      {
+        row_data[month] = { 'view': ' ', 'model' : null };
+      }
       /* increment the month */
       counter = new DateTime(counter.year, counter.month + 1, counter.day);
     }
+    print('row: $row_data');
+    rows.add(row_data);
   });
 
-  print('$rows_i\n$rows_e');
 
-  var rows = [];
-  rows.addAll(rows_i);
-  rows.addAll(rows_e);
-
-  context['Handsontable']['TextCell']['renderer'] = renderCell;
-
-//  var getCellProps = new JsFunction.withThis(getCellProperties);
   var hot_data = new JsObject.jsify({
       'colHeaders': colHeaders,
       'data': rows,
 //      'cells': (row, col, map) {
 //        print('row: $row, col: $col');
 //      },
+      'columns': columns,
       'afterChange': (changes, source, a, b, c, d)
       {
         /* changes = [ [row, col, prev, new] ] */
@@ -138,8 +138,8 @@ void displayPropertyData(Map property_data)
           var prev = changes[0][2];
           var val = changes[0][3];
           // TODO - fix up data with type assignment
-          /* item_name will always be in the zero column */
-          saveCell(property_data['prop_name'], colHeaders[col], rows[row][0], '{"amount": $val}');
+          /* item_name is the {view: item_name} in the zero column */
+          saveCell(property_data['prop_name'], colHeaders[col], rows[row][0]['view'], '{"amount": $val}');
         }
       }
   });
@@ -181,7 +181,32 @@ void renderCell(var instance, var td, int row, int col, var prop, var value, Map
   {
     value.forEach((k,v) => print('$k = $v'));
   }
+//  var fastInnerHtml = new JsFunction.withThis(context['Handsontable']['Dom']['fastInnerHtml']);
+  print('${context['Handsontable']['Dom']}');
 
+//  var display = value['view'];
+//  context['Handsontable']['renderers'].callMethod('TextRenderer', [instance, td, row, col, prop, value, cellProperties]);
+  context['Handsontable']['Dom'].callMethod('fastInnerHTML', [td, '${value}`']);
 //  context['Handsontable']['TextRenderer'](instance, td, row, col, prop, value, cellProperties);
+//  Handsontable.renderers.cellDecorator.apply(this, arguments);
+//
+//  if (!value && cellProperties.placeholder) {
+//    value = cellProperties.placeholder;
+//  }
+//
+//  var escaped = Handsontable.helper.stringify(value);
+//
+//  if (cellProperties.rendererTemplate) {
+//    Handsontable.Dom.empty(TD);
+//    var TEMPLATE = document.createElement('TEMPLATE');
+//    TEMPLATE.setAttribute('bind', '{{}}');
+//    TEMPLATE.innerHTML = cellProperties.rendererTemplate;
+//    HTMLTemplateElement.decorate(TEMPLATE);
+//    TEMPLATE.model = instance.getSourceDataAtRow(row);
+//    TD.appendChild(TEMPLATE);
+//  }
+//  else {
+//    Handsontable.Dom.fastInnerText(TD, escaped); //this is faster than innerHTML. See: https://github.com/handsontable/jquery-handsontable/wiki/JavaScript-&-DOM-performance-tips
+//  }
 
 }
